@@ -1,0 +1,29 @@
+name: Boston Ordinances Daily Check
+
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Run ordinance check
+        env:
+          GMAIL_APP_PASS: ${{ secrets.GMAIL_APP_PASS }}
+        run: python3 boston_ordinances.py
+
+      - name: Save updated state
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add boston_ordinances_state.json
+          git diff --staged --quiet || git commit -m "Update ordinance state"
+          git push
