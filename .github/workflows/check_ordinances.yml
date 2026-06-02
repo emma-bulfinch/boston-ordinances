@@ -2,8 +2,8 @@ name: Boston Ordinances Daily Check
 
 on:
   schedule:
-    - cron: '0 13 * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *'   # Every hour
+  workflow_dispatch:        # Allows you to trigger a manual run from GitHub
 
 jobs:
   check:
