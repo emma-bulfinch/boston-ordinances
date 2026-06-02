@@ -9,13 +9,13 @@ import os
 import smtplib
 import urllib.request
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # ── Config ────────────────────────────────────────────────────────────────────
 GMAIL_USER     = "emma@thinkjet.io"
-GMAIL_APP_PASS = "yilegezsysylvhao"   # Gmail App Password (no spaces)
+GMAIL_APP_PASS = os.environ.get("GMAIL_APP_PASS", "")   # Set as GitHub secret
 TO_ADDRESSES   = ["emma@thinkjet.io"]  # Add more recipients here, e.g. Veera's email
 
 SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
@@ -23,7 +23,6 @@ STATE_FILE  = os.path.join(SCRIPT_DIR, "boston_ordinances_state.json")
 
 LEGISTAR_BASE = "https://webapi.legistar.com/v1/boston"
 
-# Fields to fetch from the API
 SELECT_FIELDS = (
     "MatterId,MatterFile,MatterTitle,MatterStatusName,"
     "MatterIntroDate,MatterAgendaDate,MatterPassedDate,MatterBodyName"
@@ -32,7 +31,6 @@ SELECT_FIELDS = (
 
 
 def fetch_ordinances():
-    """Fetch all Council Ordinances from Legistar, ordered by most recently modified."""
     params = urllib.parse.urlencode({
         "$filter": "MatterTypeName eq 'Council Ordinance'",
         "$orderby": "MatterLastModifiedUtc desc",
@@ -45,7 +43,6 @@ def fetch_ordinances():
 
 
 def fetch_sponsors(matter_id):
-    """Fetch sponsor names for a given matter ID."""
     url = f"{LEGISTAR_BASE}/matters/{matter_id}/sponsors"
     try:
         with urllib.request.urlopen(url, timeout=10) as resp:
@@ -89,7 +86,7 @@ def build_email(new_items, updated_items):
                 f"<li><b>{item['MatterFile']}</b> — {item['MatterTitle']}<br>"
                 f"Sponsored by: {sponsors_str}<br>"
                 f"Hearing date: {hearing} | Status: {item['MatterStatusName']}<br>"
-                f"<a href='https://boston.legistar.com/LegislationDetail.aspx?ID={item['MatterId']}&GUID=x'>View on Legistar</a></li>"
+                f"To look up: go to <a href='https://boston.legistar.com'>boston.legistar.com</a>, click Search Agenda Items, and search for <b>{item['MatterFile']}</b></li>"
             )
         lines.append("</ul>")
 
@@ -102,7 +99,7 @@ def build_email(new_items, updated_items):
                 f"<li><b>{item['MatterFile']}</b> — {item['MatterTitle']}<br>"
                 f"Sponsored by: {sponsors_str}<br>"
                 f"Hearing date: {hearing} | Status: {item['MatterStatusName']}<br>"
-                f"<a href='https://boston.legistar.com/LegislationDetail.aspx?ID={item['MatterId']}&GUID=x'>View on Legistar</a></li>"
+                f"To look up: go to <a href='https://boston.legistar.com'>boston.legistar.com</a>, click Search Agenda Items, and search for <b>{item['MatterFile']}</b></li>"
             )
         lines.append("</ul>")
 
@@ -126,9 +123,12 @@ def send_email(subject, html_body):
 
 
 def main():
+    if not GMAIL_APP_PASS:
+        raise ValueError("GMAIL_APP_PASS environment variable is not set.")
+
     state = load_state()
     seen_ids = set(state.get("seen_ids", []))
-    seen_agenda = state.get("seen_agenda_dates", {})  # matterId -> agendaDate
+    seen_agenda = state.get("seen_agenda_dates", {})
 
     ordinances = fetch_ordinances()
 
@@ -139,13 +139,11 @@ def main():
         mid = str(item["MatterId"])
 
         if mid not in seen_ids:
-            # Brand new ordinance
             item["sponsors"] = fetch_sponsors(item["MatterId"])
             new_items.append(item)
             seen_ids.add(mid)
             seen_agenda[mid] = item.get("MatterAgendaDate")
         else:
-            # Already seen — check if hearing date changed
             prev_agenda = seen_agenda.get(mid)
             curr_agenda = item.get("MatterAgendaDate")
             if curr_agenda and curr_agenda != prev_agenda:
@@ -163,7 +161,6 @@ def main():
     else:
         print("No new ordinances or updates — no email sent.")
 
-    # Save updated state
     save_state({"seen_ids": list(seen_ids), "seen_agenda_dates": seen_agenda})
 
 
