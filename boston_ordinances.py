@@ -16,7 +16,7 @@ from email.mime.text import MIMEText
 # ── Config ────────────────────────────────────────────────────────────────────
 GMAIL_USER     = "emma@thinkjet.io"
 GMAIL_APP_PASS = os.environ.get("GMAIL_APP_PASS", "")   # Set as GitHub secret
-TO_ADDRESSES   = ["emma@thinkjet.io"]  # Add more recipients here, e.g. Veera's email
+TO_ADDRESSES   = ["emma@thinkjet.io", "jefferson@thinkjet.io", "brianna@thinkjet.io", "ayah@thinkjet.io"]
 
 SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE  = os.path.join(SCRIPT_DIR, "boston_ordinances_state.json")
