@@ -107,19 +107,19 @@ def build_email(new_items, updated_items):
     return "\n".join(lines)
 
 
-def send_email(subject, html_body):
+def send_email(subject, html_body, recipients):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = GMAIL_USER
-    msg["To"]      = ", ".join(TO_ADDRESSES)
+    msg["To"]      = ", ".join(recipients)
     msg.attach(MIMEText(html_body, "html"))
 
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()
         server.login(GMAIL_USER, GMAIL_APP_PASS)
-        server.sendmail(GMAIL_USER, TO_ADDRESSES, msg.as_string())
+        server.sendmail(GMAIL_USER, recipients, msg.as_string())
 
-    print(f"Email sent to {TO_ADDRESSES}")
+    print(f"Email sent to {recipients}")
 
 
 def main():
@@ -157,9 +157,11 @@ def main():
         total = len(new_items) + len(updated_items)
         subject = f"Boston City Council: {total} ordinance update{'s' if total != 1 else ''}"
         html = build_email(new_items, updated_items)
-        send_email(subject, html)
+        send_email(subject, html, TO_ADDRESSES)
     else:
-        print("No new ordinances or updates — no email sent.")
+        print("No new ordinances or updates.")
+        no_update_html = f"<p>No new Boston City Council ordinances or updates as of {datetime.now().strftime('%B %d, %Y %I:%M %p')} ET.</p>"
+        send_email("Boston City Council: No updates", no_update_html, ["emma@thinkjet.io"])
 
     save_state({"seen_ids": list(seen_ids), "seen_agenda_dates": seen_agenda})
 
